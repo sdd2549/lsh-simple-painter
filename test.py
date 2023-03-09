@@ -1,75 +1,29 @@
-import numpy as np
 import cv2 as cv
 
-def mouse_event_handler(event, x, y, flags, param):
-    # Change 'mouse_state' (given as 'param') according to the mouse 'event'
-    if event == cv.EVENT_LBUTTONDOWN:
-        param[0] = True
-        param[1] = (x, y)
-    elif event == cv.EVENT_LBUTTONUP:
-        param[0] = False
-    elif event == cv.EVENT_MOUSEMOVE and param[0]:
-        param[1] = (x, y)
+video_file = 'data/PETS09-S2L1-raw.webm'
+target_format = 'avi'
+target_fourcc = 'XVID' # Note) FourCC: https://learn.microsoft.com/en-us/windows/win32/medfound/video-fourccs
 
-def free_drawing(canvas_width=640, canvas_height=480, init_brush_radius=3):
-    # Prepare a canvas and palette
-    canvas = np.full((canvas_height, canvas_width, 3), 255, dtype=np.uint8)
-    palette = [(0, 0, 0), (255, 255, 255), (0, 0, 255), (0, 255, 0), (255, 0, 0), (255, 255, 0), (255, 0, 255), (0, 255, 255)]
+# Read the given video file
+video = cv.VideoCapture(video_file)
 
-    # Initialize drawing states
-    mouse_state = [False, (-1, -1)] # Note) [mouse_left_button_click, mouse_xy]
-    brush_color = 0
-    brush_radius = init_brush_radius
-
-    # Instantiate a window and register the mouse callback function
-    cv.namedWindow('Free Drawing')
-    cv.setMouseCallback('Free Drawing', mouse_event_handler, mouse_state)
-    
-    # Draw a circle with its label
-    center = (100, 240)
-    cv.circle(canvas, center, radius=60, color=(0, 0, 255), thickness=5)
-    cv.putText(canvas, 'Red Circle', center, cv.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 0))
-    
-     # Draw a circle with its label
-    center = (300, 240)
-    cv.circle(canvas, center, radius=60, color=(0, 255, 0), thickness=5)
-    cv.putText(canvas, 'Green Circle', center, cv.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 0))
-    
-     # Draw a circle with its label
-    center = (500, 240)
-    cv.circle(canvas, center, radius=60, color=(255, 0, 0), thickness=5)
-    cv.putText(canvas, 'Blue Circle', center, cv.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 0))
-    
-    
-    
-    
-    
-
+if video.isOpened():
+    target = cv.VideoWriter()
     while True:
-        # Draw a point if necessary
-        mouse_left_button_click, mouse_xy = mouse_state
-        if mouse_left_button_click:
-           cv.circle(canvas, mouse_xy, brush_radius, palette[brush_color], -1)
-
-        # Show the canvas
-        canvas_copy = canvas.copy()
-        info = f'Brush Radius: {brush_radius}'
-        cv.putText(canvas_copy, info, (10, 25), cv.FONT_HERSHEY_DUPLEX, 0.6, (127, 127, 127), thickness=2)
-        cv.putText(canvas_copy, info, (10, 25), cv.FONT_HERSHEY_DUPLEX, 0.6, palette[brush_color])
-        cv.imshow('Free Drawing', canvas_copy)
-
-        # Process the key event
-        key = cv.waitKey(1)
-        if key == 27: # ESC
+        # Get an image from 'video'
+        valid, img = video.read()
+        if not valid:
             break
-        elif key == ord('\t'):
-            brush_color = (brush_color + 1) % len(palette)
-        elif key == ord('+') or key == ord('='):
-            brush_radius += 1
-        elif key == ord('-') or key == ord('_'):
-            brush_radius = max(brush_radius - 1, 1)
 
-    cv.destroyAllWindows()
+        if not target.isOpened():
+            # Open the target video file
+            target_file = video_file[:video_file.rfind('.')] + '.' + target_format
+            fps = video.get(cv.CAP_PROP_FPS)
+            h, w, *_ = img.shape
+            is_color = (img.ndim > 2) and (img.shape[2] > 1)
+            target.open(target_file, cv.VideoWriter_fourcc(*target_fourcc), fps, (w, h), is_color)
 
-if __name__ == '__main__':
-    free_drawing()
+        # Add the image to 'target'
+        target.write(img)
+
+    target.release()
